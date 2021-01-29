@@ -1,0 +1,1069 @@
+https://docs.google.com/document/d/1LsQyB_9DlKkA2CfFgF0zkRclfO9lZT9ZoIHcANWzvxQ/edit
+https://docs.google.com/document/d/1La9THWSlX2AW7LCbAUzLQqP3bOPuoK-xBWzdEeniXgY/edit
+
+- Docker Architecture
+Docker uses a client-server architecture. The engine consists of three major components:
+
+Docker Daemon: The daemon (dockerd) is a process that keeps running in the background and waits for commands from the client. The daemon is capable of managing various Docker objects.
+Docker Client: The client  (docker) is a command-line interface program mostly responsible for transporting commands issued by users.
+REST API: The REST API acts as a bridge between the daemon and the client. Any command issued using the client passes through the API to finally reach the daemon.
+
+- Container Names
+When you create a Docker container, it is assigned a universally unique identify (UUID)
+To help the humans, Docker also allow us to supply container Names
+By default, if we do not specify the name, docker supples randomly-generated name from two words, joined by an underscode.
+By adding --name meaningful_name argument during docker run command, we can specify our own name to the containers.
+
+
+>> docker run --name myngnx -dt -p 8000:80 nginx
+
+- Port Binding
+By default Docker container can make connections to the outside world, but the outside world cannot connect to containers.
+
+To access a port that is inside a container, you need to map that port to a port on the host system. You can do that by using the -p or --port
+
+>> docker run -p 80:80 nginx
+
+- Attached and Detached Modes
+When we start a Docker container, we need to decide if we want to run in a default foreground mode or the detached mode.
+
+>> docker run --name attached -p 8000:80 nginx 
+Won't run in backgroup, we are able to see the log and when we cancel (ctrl+C) we will stop de container.
+
+>> docker run -d --name detached -p 8080:80 nginx 
+it will run in background
+To detach a container, we can use the -d or --detach option
+
+- Removing Docker container
+docker stop == docker container stop
+
+>> docker container stop $(docker container ls -aq)
+To stop in lot.
+
+docker rm == docker container rm
+
+>> docker container rm $(docker container ls -aq)
+To remove in lot.
+
+There are two commands for stopping a running container:
+docker stop <container-id>
+docker kill <container-id> -- will terminate the container immediately without giving a chance to clean up.
+
+>> docker container prune
+clean up all Docker objects (containers, networks, build cache)
+
+By default, We can't remove the docker container when it is running.
+To remove the docker container when it is running, we should use the -f or --force
+
+>> docker container rm <container-id>
+>> Error response from daemon: You cannot remove a running container container-id. Stop the container before attempting removal or force remove.
+
+>> docker container rm <container-id> -f
+To force removes the docker container
+
+- Docker container exec
+The Docker container exec command run a new command in a running container.
+
+>> docker run --name ubuntu_bash -dt ubuntu
+>> docker container exec -it ubuntu_bash bash
+>> docker container exec -it ubuntu_bash cat /etc/os-release
+
+cat /etc/os-release
+printed out the OS details
+
+When we run a container, a default command executes which typically  runs as PID 1.
+The command started using docker exec only runs while the container's primary process (PID 1) is running.
+If you stop the PID 1 process, the service to run the docker container, the docker container will stop.
+
+-- Restart Polices in Docker 
+By default, Docker container don't restart automaticaly when restart the docker deamon
+
+>> systemctl restart docker
+To restart docker daemon
+
+Restart Police Options
+no - don't automaticaly restart the container (default)
+on-failure - restart the container if it exits due to an error.
+unless-stopped - restart the contaner unless it is explicty stopped.
+always - always restart the container is it stops.
+
+>> docker container run -d --restart unless-stopped nginx
+
+- Disk Usage Metrics for Docker
+>> docker system df
+>> docker system df -v
+
+- Create a container for the specific job
+>> docker container run -dt --name testcontainer busybox ping -c10 google.com
+When finished the 10 pings the docker container will exit after the job completes.
+
+>> docker container run -dt --rm --name testcontainer2 busybox ping -c10 google.com
+When we use --rm, the docker container will automaticaly remove the container when it exits
+
+- Overview Dockerfile
+The format Dockerfile is similar to the below syntax:
+# comment
+INSTRUCTIOIN arguments
+
+- COPY vs ADD
+COPY and ADD are both Dockerfile instructions that serve similar purposes. 
+They let you copy files from a specific location into a Docker image.
+
+COPY only supports the basic copying of local files into the container
+while ADD has some features (like local-only tar extraction and remote URL support) that are not immediately obvious. Consequently, the best use for ADD is local tar file auto-extraction into the image, as in ADD rootfs.tar.xz /.
+
+Using the ADD to fetch packages from remote URLs is strongly discouraged; you should use curl or wget instead.
+
+>> ADD compress.tar.gz /tmp
+When you use the ADD instructions, it will copy and uncompress the file.
+
+- EXPOSE 
+The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime.
+The EXPOSE instruction does not actually publish the port.
+It functions as a type of documentation between the person who builds the image and the person who runs the container.
+
+>> EXPOSE 80
+It will EXPOSE the port of the service inside the docker container.
+
+If you don't EXPOSE the port, it will be a little bit difficult for the person to run the application to identify the port.
+
+- HEALTHCHECK
+HEALTHCHECK instruction Docker allows us to tell the platform on how to test that our application is healthy.
+it will monitors the process that the Docker container runs. If the process ends, the container exits.
+
+>> Dockerfile >> HEALTHCHECK CMD curl --fail http://localhost:80/ || exit 1
+>> docker container run -dt --rm --name  monitor-inside -p 8001:80 monitor-inside 
+It will checks if the HTTP port 80 is running 
+
+- ENTRYPOINT
+ENTRYPOINT and CMD allow you to specify the startup command for an image.
+ENTRYPOINT doesn't allow you to overrride the command.
+ENTRYPOINT is preferred when you want to define a container with a specific executable. You cannot override an ENTRYPOINT when starting a container unless you add the --entrypoint flag.
+We can combine both in the same Dockerfile
+
+- WORKDIR
+The WORKDIR instruction sets the working drectory for any RUN, CMD, ENTRYPOINT, COPY, and ADD instructions that follow it in the Dockerfle
+
+- ENV
+The ENV instruction sets the environment variable <key> to the value <value>
+You can use the -e, --env, and --env-file flags to set simple environment variables in the container you're running, or overwrite variables that are defined in the Dockerfile of the image you're running.
+
+>> docker run -dt --name env02 --env USER=ADMINUSER busybox sh
+It will create the environment variable in Docker container.
+
+>>  docker build -t ex1 .
+docker build will load the image
+
+>> docker container run -dt --name ex1 -p 80:80 ex1
+docker run will create the container using the ex1 image base.
+
+- Tagging Docker Images
+>> docker build -t demo:v1 .
+Add tag during the build the image
+
+>> docker tag 42a7147f860a demo:v2
+Add tag in the Docker image
+
+>> docker tag ubuntu:latest ubuntu:v1
+Add more than one tag in the Docker image.
+
+- Docker Commit
+You make changes inside the container, it can be useful to commit a container's file changes or settings into a new image.
+
+>> docker container commit busybox busybox02
+you can change the content and COMMIT the changes.
+
+>> docker container commit --change='CMD ["ash"]'
+The --change option will apply Dockerfile instructions to the images that is created.
+Supported: CMD, ENTRYPOINT, ENV, EXPOSE, LABEL, ONBUILD, USER, VOLUME, and WORKDIR.
+
+- Layers of Docker Images
+Each layer represents an instruction in the image's Dockerfile.
+
+>> docker image history ubuntu
+
+- Managing Images with CLI 
+
+- Remove images
+Remove one or more images
+
+>> docker rm <IMAGE-ID>
+>> docker rmi <IMAGE-ID>
+
+>> docker image rm $(docker images -aq)
+This will remove all images without at least one container associated to them.
+
+-- Docker Logs
+docker logs -f <container id>
+You can kind of hook into the output stream of the container and get the logs in real-time by using the -f or --follow option.
+
+- Docker Image prune
+docker image prune command allows us to clean up unused images. 
+Dangling Images - It will clean image without tags and image not referenced by any container.
+
+>> docker image prune
+This will remove all images without tag and don't have container associated.
+
+>> docker image prune -a
+This will remove all images without at least one container associated to them.
+
+- List images
+docker images == docker images ls
+
+- Inspect Docker Images
+docker image inspect command allows us to see all the information associated with a docker image
+
+>> docker images inspect <IMAGE-ID>
+List all the information about docker image
+
+>> docker image inspect 4bb46517cac3 | grep Hostname
+filter the expecific information in inspect
+
+>> docker image inspect 4bb46517cac3 --format='{{.Id}}'
+filter the expecific information in inspect
+
+>> docker image inspect 4bb46517cac3 --format='{{.ContainerConfig.Hostname}}' 
+filter the expecific information in inspect
+
+>> docker image inspect 4bb46517cac3 --format='{{json .ContainerConfig}}' 
+filter the expecific information in inspect with key and value.
+
+- System prune
+Remove all unused containers, networks, images (both dangling and unreferenced), and optionally, volumes.
+
+>> docker system prune
+remove all without tags and without container referenced.
+>> docker system prune -a
+remove all without container referenced.
+
+- Flattening Docker Images
+changes the layers of the docker images
+
+>> docker container export myubuntu > myubuntu.tar
+>> cat myubuntu.tar | docker import - myubuntu:latest
+>> docker image history myubuntu
+
+The layer was modify or hidden.
+
+- Docker Register
+https://hub.docker.com/_/registry
+>> docker run -d -p 5000:5000 --restart always --name registry registry:2
+>> docker tag ubuntu localhost:5000/ubuntu
+>> docker push localhost:5000/ubuntu
+
+>> docker pull busybox
+>> docker login 
+>> docker tag busybox leonardobaiao/mydemo:v1
+>> docker push leonardobaiao/mydemo
+
+my repository: https://hub.docker.com/repository/docker/leonardobaiao/mydemo
+
+>> docker pull leonardobaiao/mydemo:v1
+
+>> docker logout
+
+- docker search
+>> docker search nginx
+
+>>  docker search nginx --limit 5
+Max number of search results (default 25)
+
+>> docker search nginx  --filter "is-official=true"
+
+>> docker search --filter is-official=true --filter stars=3 busybox
+This example displays images with a name containing ‘busybox’, at least 3 stars and are official builds
+
+- Moving images across host 
+
+>> docker save myapp > myapp.tar
+>> docker rmi <IMAGE-ID>
+>> docker load < myapp.tar
+
+- Layers cache
+Docker uses a layer cache to optimize the process of building Docker images and make it fast.
+
+- Docker Network
+Docker takes care of the nerworking aspects so that container can communicate with other containers and also with Docker Host.
+There are saveral drivers available by default, and provides core networking funciotionality:
+    bridge
+    host
+    overlay
+    macvlan
+    none
+
+ 1.  macvlan - Every container get its own IP and MAC.
+
+>> docker network ls
+Drivers available
+
+>> docker inspect bridge
+Inspect about bridge driver network
+
+>> docker container run -dt --name myhost --network host ubuntu
+Run the docker container in host network.
+
+>> docker network inspect host
+Inspect about host driver network
+
+- Bridge Network Driver
+The containers use the Gateway to access the internet (172.17.0.1)
+
+>> docker container inspect ubuntu
+Use the inspect to discover the type of networks and ipaddress
+
+>> apt-get update && apt-get install net-tools -y && apt-get install iputils-ping -y
+In ubuntu container, you need to update and install network tools.
+
+The communicate between containers are automatic in all container of the bridge driver network
+
+>> route -n
+Use the route -n to view the route tables.
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.17.0.1      0.0.0.0         UG    0      0        0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 eth0
+
+Bridge is the default network driver for Docker.
+
+We also can create User-Defined Bridge Network which are superior to the default bridge.
+
+- User-Defined Bridge Network
+There are various difference between default and user-defined bridge:
+    User-Defined bridges provide better isolation and interoperability between containered applications.
+    Provide automatic DNS resolution between containers
+    Containers can be attached and detached from user-defined networks on the fly.
+    Each user-defined network creates a configurable bridge
+    Linked containers on the default bridge network share environment
+
+User-defined bridge networks are created and configured using docker network create. If different groups of applications have different network requirements, you can configure each user-defined bridge separately, as you create it.
+
+https://docs.docker.com/network/bridge/#:~:text=User%2Ddefined%20bridge%20networks%20are%20created%20and%20configured%20using%20docker,bridge%20network%20share%20environment%20variables.
+
+>> docker network create --driver bridge mybridge
+Create the new network
+If you don't especify the driver, it will create with bridge as default.
+
+>> docker network inspect mybridge
+Inspect my new network
+
+>> docker container run -dt --name mybridge01 --network mybridge ubuntu
+Create docker container in my new bridge.
+
+We are not able to connect container in different network.
+
+When you create the new network, you need to define the options. It is created default in bridge network default
+
+- Host Network
+if you use the host network mode for a container, that container’s network stack is not isolated from the Docker host (the container shares the host’s networking namespace), and the container does not get its own IP-address allocated. For instance, if you run a container which binds to port 80 and you use host networking, the container’s application is available on port 80 on the host’s IP address.
+
+for Bridge Network you should especify the -p or --port
+
+In the Host Network you don't need to especify the port in the docker container command because the port is share with the host.
+
+>> docker container run -dt --name myhost --network host ubuntu
+
+- None Network
+If you want to completely disable the networking stack on a container, you can use the none network.
+This mode will not configure any IP for the container and doesn't have any access to the external network as well as for other containers.
+
+>> docker container run -dt --name mynone --network none ubuntu
+
+- Port Publishing
+There is also a second approach to publish all the exposed ports of the container.
+
+>> docker container run -dt --name webserver -P nginx
+This is also referred as a publish all
+In this approach, all exposed ports are published to random ports of the host.
+
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS                   NAMES
+1931bae14f5e        nginx               "/docker-entrypoint.…"   About a minute ago   Up About a minute   0.0.0.0:32768->80/tcp   webserver02
+
+--publish-all , -P
+Publish all exposed ports to random ports
+
+- Legacy Approuch for Linking Container 
+
+>> docker container run -dt --name container01 busybox sh
+>> docker run -dt --link container01:container  --name container02 busybox sh
+
+>> docker container exec -it container02 sh 
+In the container02, you are able to access or ping the container01
+
+>> cat /etc/hosts
+automaticaly is create the hosts for container01.
+
+In the exam the question about the link is relation at the default bridge.
+
+- Container Orchestration
+
+Docker Swarm is a container orchestration tool which is natively supported by Docker.
+
+Linux Installation Commands (official)
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum -y install docker-ce
+systemctl start docker
+
+
+created 3 instances.
+
+>> centos
+#!/bin/bash
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum -y install docker-ce
+systemctl start docker
+systemctl enable docker
+
+Install docker-ce - ubuntu
+https://www.linode.com/docs/applications/containers/install-docker-ce-ubuntu-1804/
+https://docs.docker.com/engine/install/ubuntu/
+
+>> ubuntu
+#!/bin/bash
+sudo apt update  -y
+sudo apt remove docker docker-engine docker.io
+sudo apt install apt-transport-https ca-certificates curl software-properties-common gnupg  -y
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo apt-key fingerprint 0EBFCD88
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+sudo apt install docker-ce -y
+sudo usermod -aG docker $USER
+apt-get update && apt-get install net-tools -y && apt-get install iputils-ping -y
+
+sudo hostnamectl set-hostname swarm01
+
+change the hostname for each instance. 
+https://www.cyberciti.biz/faq/ubuntu-change-hostname-command/
+
+- Docker Swarm
+A node is an instance of the Docker engine participating in the Swarm
+To deploy your application to a swarm, you submit a service definition to a manager node.
+The manager node dispatches units of work called tasks to worker nodes.
+
+>> docker swarm init --advertise-addr 10.0.0.235
+Manager Node command
+The IP address associated the eth0 in swarm01
+
+Result command:
+|Swarm initialized: current node (rzu10a230wzmvm08mqdzw43ct) is now a manager.
+|
+|To add a worker to this swarm, run the following command:
+|
+|    docker swarm join --token SWMTKN-1-0dasl4nm5kba3aqv1nn36137s6rp03xi8ovxkj2d6nunfmv3lj-eac77qwp8rz59bmo14znn6jjh 10.0.0.119:2377
+|
+|To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+
+>> docker swarm init --advertise-addr 172.31.12.161:2377 --listen-addr 172.31.12.161:2377
+The 2377 port is not mandatory
+Engine port: 2375
+Security eegine  port: 2376
+Swarm port: 2377 (official port)
+
+>> docker swarm join-token worker
+Worker node command
+Copy the command of the result manager(swarm01)
+
+In swarm01, you should executed.
+>> docker node ls
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+rzu10a230wzmvm08mqdzw43ct *   swarm01             Ready               Active              Leader              19.03.12
+zoo6zve29xmborbyopnm1qvym     swarm02             Ready               Active                                  19.03.11
+mhlqrvrm5p1jka2sv7eaz8fnf     swarm03             Ready               Active                                  19.03.12
+
+we can execute:
+>> docker swarm join-token worker
+>> docker swarm join-token manager
+
+- Services, Tasks, and Containers
+A service is the definition of the tasks to execute on the manager or worker nodes.
+
+>> docker service create --name webserver --replicas 1 nginx
+Created the services and the number of replicas.
+Before we need to create the nginx container
+I need to create the service in the leader
+
+>> docker service ls
+List services and information about replicas
+
+>> docker service ps webserver
+List services and information about docker container 
+
+-- Scaling Swarm Service
+>> docker service scale webserver=5
+Create scale for service
+
+There are two ways in which you can scale service in swarm
+>> docker service scale webserver=5
+>> docker service update --replicas 8 webserver
+Two commands to scale service
+
+>> docker service scale service01=3 service02=3
+Only command you can scale more than 1 services.
+
+Don't have possible use multiple scale with docker service update 
+
+- Replicated vs Global Service
+There are two types of services deployments, replicated and global.
+For replicated service, you specify the number of identical tasks you want to run. For example, you decide to deploy an NGINX service with two replicas, each serving the same content.
+
+- Global Service
+A global service is a service that runs one task on every node.
+
+>> docker service create --name antivirus --mode global -dt ubuntu
+
+- Draining Swarm Node
+
+>> docker node update --availability drain swarm03
+It is recommended to drain before stop the node.
+
+>> docker node update --availability active swarm03
+Active
+
+- Inspecting swarm service and nodes
+Some of these Docker Object includes:
+- Docker containers
+- Docker network
+- Docker volumes
+- Docker swarm service
+- Docker swarm node
+
+>> docker service inspect <SERVICE NAME>
+>> docker service inspect webserver --pretty 
+
+>> docker node inspect swarm01
+>> docker node inspect swarm01 --pretty
+
+- Adding Network and publishing port
+
+>> docker service create --name  webserver --replicas 2 --publish 8080:80 nginx
+>> docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+qfev76q4xxuu        antivirus           global              3/3                 ubuntu:latest       
+pevle45t33xz        webserver           replicated          2/2                 nginx:latest        *:8080->80/tcp
+
+The port is working independent host. All the IP instance will response the 8080 port.
+
+-  Docker compose 
+Compose is tool for defining and running multi-container Docker applications.
+With Compose you use a YAML file to configure your applications services.
+We can start all the service with single command: docker compose up
+We can stop all the services with  single command: docker compose down
+
+Docker Desktop for Mac and Docker Toolbox already include Compose along with other Docker apps, so Mac users do not need to install Compose separately.
+
+Commands used for Installing Docker Compose in Linux:
+
+>> 
+curl -L "https://github.com/docker/compose/releases/download/1.25.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+docker-compose version
+<<
+
+>> docker-compose --version
+
+>> docker-compose config
+Check the format is correct.
+
+>>  docker-compose up -d
+Start Docker Compose
+
+>> docker-compose down
+Bring Down application started via Docker Compose
+
+- Docker Stack
+The docker stack can be used to manage a multi-service application.
+A stack is a group interrelated services that share dependencies, and can be orchestrated and scaled together.
+A stack can compose YAML file like the one that we define during Docker Compose.
+We can define everything within the YAML file that we might define while creating a Docker Service.
+
+>> https://docs.docker.com/engine/swarm/stack-deploy/
+
+>> docker stack deploy --compose-file docker-compose.yml mydemo
+Create the docker-compose in cluster swarm.
+
+>> docker stack ps mydemo
+Show the mydemo stack
+
+>> docker stack ls
+NAME                SERVICES            ORCHESTRATOR
+mydemo              2                   Swarm
+
+List all the stacks
+
+>> docker stack rm mydemo
+Remove the stack
+
+- Locking Swarm cluster
+Swarm Cluster container lot of sensitive information, which includes
+  . TLS key used to encrypt communication among swarm node
+  . Keys used to encrypt and decrypt the Raft logs on disk.
+If your swarm is compromised and if data is stored in plain-text, an attack can get all the sensitive information.
+Docker Lock allows us to have control over the key.
+
+>>root@swarm01:/var/lib/docker/swarm/certificates# docker swarm update --help
+
+>> systemctl stop docker 
+stop docker
+
+>> docker swarm update --autolock=true
+--autolock   Change manager autolocking setting (true|false)
+
+>> root@swarm01:/var/lib/docker/swarm/certificates# docker swarm update --autolock=true
+Swarm updated.
+To unlock a swarm manager after it restarts, run the `docker swarm unlock`
+command and provide the following key:
+
+    SWMKEY-1-4JbbdGMuMdeu4A0uWwWLXGaONSgT/eShg3hLVGdGIto
+
+>> root@swarm01:/var/lib/docker/swarm/certificates# docker node ls
+Error response from daemon: Swarm is encrypted and needs to be unlocked before it can be used. Please use "docker swarm unlock" to unlock it.
+
+
+>> root@swarm01:/var/lib/docker/swarm/certificates# docker swarm unlock
+Please enter unlock key: 
+. provide the key.
+
+>> docker swarm unlock-key
+To retrieve key after swarm is unlocked
+
+>> docker swarm unlock-key --rotate
+    SWMKEY-1-4JbbdGMuMdeu4A0uWwWLXGaONSgT/eShg3hLVGdGIto
+    SWMKEY-1-4JbbdGMuMdeu4A0uWwWLXGaONSgT/eShg3hLVGdGIto
+    SWMKEY-1-bX1+qWi17xWC8mDLurCwTwREFyglqVrRzGvgwLxGg1E
+To rotate the key
+
+- Troubleshoot service deployments
+A service may be configured in such a way that no node currently in the swarm can run its tasks.
+In this case, the service remains in state pending
+
+There are multiple reasons why service might go into pending state.
+
+If all nodes are drained, and you create a service, it is pending until a node becomes available
+
+You can reserve a specific amount of memory for a service. if no node in the swarm has the required amount of memory, the service in a pending state until a node is available which can run its tasks.
+
+You have imposed some kind of placement constraints.
+
+- Mount Volumes with Swarm
+
+>>  docker service create --name myservice --mount type=volume,source=myvolume,target=/mypath nginx
+Create Service with Volume
+
+>> docker volume ls
+Verify Volume Information
+
+When you remove the service the volume isn't removed.
+
+- Placement constraints
+Swarm service provide a few different ways for you to controle scale and placement of serices on different nodes.
+
+1.Replicated and Global services
+2.Resource constraints (requirements of CPU and Memory)
+3.Placement constraints (only run nodes with label pci_compliace-true)
+4.Placement preferences
+
+
+>> docker node update --label-add region=mumbai swarm03
+Create label
+
+>> docker service create --name myconstraint --constraint node.labels.region==mumbai --replicas 3 nginx
+Create service in the label
+
+>> docker node update --label-rm region swarm03
+Remove label
+
+- Overlay Network
+The Overlay Network driver creates a distributed network amoung multiple Docker daemon hosts
+Overlay Network allows containers connected to it to communicate securely.
+
+in swarm01
+>> docker network create --driver overlay mynetwork
+it will create the mynetwork overlay driver in all the nodes.
+
+>> docker service create --name myservice --network mynetwork --replicas 3 nginx
+Create Service with Custom Overlay Network
+
+>> docker network ls
+Verify Networks
+
+>> docker network rm mynetwork
+remove network
+
+- Security Overlay Network
+For the overlay network, the containers can be spreaded across multiple servers.
+If the containers are communicating with each other, it is recommendded to secure the communication.
+
+To enable encryption, when you create an overlay network pass the --opt encrypted flag:
+
+>>  docker network create --opt encrypted --driver overlay my-overlay-secure-network
+
+When you enable overlay encryption, Docker creates IPSEC tunnels between all the nodes where tasks are scheduled for services attached to the overlay network.
+
+These tunnels also use the AES algorithm in GCM mode and manager nodes automatically rotate the keys every 12 hours.
+
+Overlay network encryption is not supported on windows.
+
+- Creating services using templates
+
+>> docker service create --name nginxservice --hostname={{.Node.Hostname}}-{{.Service.Name}} nginx
+.Node.Hostname = hostname VM.
+.Service.Name = name of the service (nginxservice)
+
+It will be the hostname in the container.
+
+There are three supported flags for the placeholder templates:
+--hostname
+--mount
+--env
+
+- Split-Brain & Quorum
+
+- Swarm Manager Node HA 
+Manager Node has many responsability within swarm, these incluse:
+ maintaining cluster state
+ scheduling services
+ serving swarm mode HTTP API endpoints
+
+Using a Raft implementation, the managers maintain a consistent internal state of the entire swarm and all the services running out it.
+
+Docker recommends you implement an odd number of nodes according to your organization's high-availability requirements.
+
+An N manager cluster tolerates the loss of at most (N-1)/2 managers.
+
+>> docker swarm init --advertise-addr (IP)
+Create the cluster in Master01
+Result command:
+|Swarm initialized: current node (rzu10a230wzmvm08mqdzw43ct) is now a manager.
+|
+|To add a worker to this swarm, run the following command:
+|
+|    docker swarm join --token SWMTKN-1-0dasl4nm5kba3aqv1nn36137s6rp03xi8ovxkj2d6nunfmv3lj-eac77qwp8rz59bmo14znn6jjh 10.0.0.119:2377
+|
+|To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+
+>> docker swarm join-token manager
+To generate the token for add more one manager in the cluster
+
+>> docker node ls
+
+The manager02 don't assume with leader because the quotum (N-2)/2. We need to least 3 manager.
+
+- Running Manager-Only nodes in Swarm
+
+Docker doen't recommend to running node in manager.
+
+>> docker node update --availability drain (manager-servce)
+Don't allow to running service in manager.
+
+- Recover from losing the Quorum
+
+If you have only 2 manager and the leader broken.
+you should initialized a new cluster with the manager02
+
+>> docker swarm init --force-new-cluster --advertise-addr (IP):2377
+It will create a new cluster and assume the service the loose leader.
+
+- Docker systems events
+
+https://docs.docker.com/engine/reference/commandline/system/
+
+>> docker system events
+Use docker system events to get real-time events from the server. These events differ per Docker object type.
+
+>> docker system df
+The docker system df command displays information regarding the amount of disk space used by the docker daemon.
+
+>> docker system info
+Display system-wide information
+
+>> docker system prune
+Remove all unused containers, networks, images (both dangling and unreferenced), and optionally, volumes.
+
+
+
+- Docker Enterprise Edition (Docker EE)
+Docker EE is designed for enterprise development as well as IT teams who build, ship, and run business-critical applcations in production and at scale.
+
+- Docker UCP 
+Docker Universal Control Plane (UCP) is the enterprise-grade cluster management solution from Docker.
+UCP helps you manager your Docker cluster and applications through a single interface.
+UCP is a containerized application that run on Docker EE.
+
+>> docker container run --rm -it --name ucp -v /var/run/docker.sock:/var/run/docker.sock docker/ucp:3.1.4 install --host-address 139.59.82.72 --force-minimums
+Installing Docker UCP
+
+Docker UCP allows us provides granular access control feature which allows us to define various aspects like who can create and edit container resources in your swarm and others.
+
+. A subject represents a user, team, or organization.
+. A subject is in-turn granted an appropriate role.
+.. User - Indivdual user
+.. Organization - group of users
+.. Team - is part of organization
+
+- Docker Trusted Registry (DTR)
+
+DTR provides many features that helps in overall enterprise grade container management
+
+features
+. Security Scanning
+. Image Scanning
+. Built-in access control
+. Caching Images
+
+. Minumum requirements for DTR
+.. 16GB
+.. 2 CPU
+
+Have to fixed the hostname
+
+Port used: 80 e 443.
+
+DTR is integrated with UCP.
+
+>> docker run -it --rm docker/dtr install --ucp-node node01 --ucp-username admin --ucp-url https://159.89.168.70 --ucp-insecure-tls
+Installation of Docker DTR
+
+- DTR backup 
+Docker DTR has a backup command that allows us to take the backup.
+
+The backup command doesn't cause downtime for DTR, so you can take frequent backups without affecting yours users.
+
+>> docker run --log-driver none -i --rm docker/dtr backup --ucp-url https://172.31.40.237 -ucp-insecure-tls --ucp-username admin --ucp-password YOUR-PASSWORD-HERE > backup.tar
+
+This command only creates backups of configurations and image metadata
+
+It doesn't backup users and organizations. Users and organizations can be backed up during a UCP back up.
+It also does not back up Docker images stored in your regstry.
+
+- Backup DTR Image
+DTR support multiple backends to store the images.
+
+- Storage driver (DTR)
+By default, DTR stores images on the filesystem of the node where it is running, but you should configure it to use a centralized storage backend.
+
+You can configure DTR to use an external storage backend for improved performance or high availability.
+
+Some are the supported storage systems in DTR are:
+. local
+.. NFS
+.. Bind Mount
+.. Volume
+
+. Cloud Storage Provider
+.. AWS S3 
+.. Azure
+.. Google Cloud
+
+- Health Check endpoints
+DTR also exposes several endpoints you can use to assess if a DTR replica is healthy or not.
+
+/_ping: 
+Checks if DTR replicas is healthy, and returns a simple json response 
+
+-  High availability
+To have high-availability on UCP and DTR, you need a minimum of:
+.3 dedicated nodes to install UCP with hight availability
+.3 dedicated nodes to install DTR with hight availability
+
+>> docker run -it --rm docker/dtr join --ucp-insecure-tls
+Join the DTR Replica
+
+- Immutable tags
+To prevent tags from being overwritten, you can configure a repository to be immutable
+Once configured, DTR will not allow anyone else to push another image tag with the same name.
+
+Setting Orchestrator Types in UCP
+Docker UCP supports both Swarm and Kubernetes
+Mixed types enables workloads to be scheduled by Kubernetes and Swarm both on the same node.
+
+>> docker node update --label-add com.docker.ucp.orchestrator.kubernetes=true <NODE_ID>
+Change orchestrator type via CLI
+
+https://docs.google.com/document/d/1La9THWSlX2AW7LCbAUzLQqP3bOPuoK-xBWzdEeniXgY/edit
+
+- Container Security Scanning
+DTR allows us to performa security scan for the containers.
+These scan can perform "On Push" or even manually
+
+- DTR Webhooks
+You can configure DTR to automatically post event notifications to a webhooks URLs of your choosing.
+
+DTR --- can trigger the Security Scan ----> Jenkins
+
+- UCP - Client Blundles
+A client blundles is a group of certificates downloadable directly from the Docker Universal Control Plane (UCP)
+Dependending on the permission associated with the user, you can now execute docker swarm commands from yours remote machine that take effect on the remotee cluster.
+
+>> docker container run -dt --name myubuntu ubuntu bash
+>> docker container cp ecret_text.txt myubuntu:/tmp
+I can use the docker cp for copy content to container
+
+>> curl -sSL https://get.docker.com/ | sh
+>> docker service create --name mydemoservice nginx
+UCP Client Bundle Integration
+
+- Linux Namespace
+
+
+- Limite CPU for Containers
+There are various ways in which you can limit the CPU for containers, these include:
+>> --cpus=<VALUE> 
+>> --cpuset-cpus 
+
+. 1. CPU is 0
+. 2. CPU is 1
+
+>> docker container run -dt --name constraint01 --cpus=1.5 busybox sh
+>> docker container run -dt --name constraint02 --cpuset-cpus=0,1 busybox sh
+
+- Limit vs Reservation
+
+We have two kinds of memories limits
+. Soft and Hard
+
+>> docker contianer run --name container01 --memory-reservation 250m  busybox sh
+>> docker contianer run --name container02 -m500m busybox sh
+>> docker contianer run --name container03 -m500m --memory-reservation 250m  busybox sh
+
+- Swarm MTLS
+The nodes in a swarm use mutual Transport Layer Security (TLS) to authenticate,
+authorize and encrypt the communications with other nodes in the swarm.
+
+By default, the manager node generates a new root Certificate Authority (CA) along with a key pair,
+which are used to secure communications with others nodes that join the swarm.
+
+You can specify your own externally-generated root CA, using the --external-ca flag of the docker swarm initial command.
+
+By default, each node in the swarm renew its certificate every three months.
+
+You can configure this interval by running the docker swarm update --cert-expiry<TIME PERIOD>
+
+- Docker Secrets
+
+Docker Secrets to centrally manage this data and securely transmit it to only those containers that need access to it.
+Secrets are encrypted during transit and rest in the Docker Swarm.
+
+>> docker secret create <<NAME>> <<FILE>> 
+Create secret
+
+>> docker service create --name web --secret <<NAME_SECRET>> 
+The file with credentials is created in /run/secrets inside the container.
+
+- Docker Content Trust
+
+>> export DOCKER_CONTENT_TRUST=1
+enable pull only with certificate
+
+
+- Groups permission on docker command
+
+You should add the user in /etc/groups or execute the command:
+>> usermod -aG docker <user>
+
+- Privileged Containers
+
+>> docker contianer run --dt --privileged amazonlinux bash
+https://docs.google.com/document/d/1ehPXjz7PXALFbmg02MoiECmOzAYX2eYEier--i2NMzY/edit
+
+- Block vs Object Storage
+. Block
+.. File is split and stored in fixed sized blocks.
+.. Capacity can be increase by adding more nodes.
+.. Suitables applications which require high IOPS, database, transactional data.
+
+. Object
+.. Store virtuallyn unlimmited files
+.. Maintain file revision.
+.. HTTP(s) based interface
+.. Files distributed in different physical nodes.
+
+- Storage drivers
+. Overlay2 is storage default for linux.
+
+For change the type of storage:
+
+/var/lib/docker/
+{
+  "storage-driver": "aufs"
+}
+https://docs.docker.com/storage/storagedriver/select-storage-driver/
+
+- Docker Volumes
+. Bind Mount
+.. filesystem
+
+. Volume
+.. Docker area 
+
+. tmpfs mount
+.. memory
+
+tmpfs mount only in Linux
+
+>> docker volume create <NAME>
+Docker area
+when you create the 'docker volume', it has occurred in Docker area
+
+>> VOLUME <NAME>
+Docker area
+when you create the volume from the VOLUME tag in Dockerfile, the name of volume will be dynamic.
+
+>> docker container run --dt --name myvolume -v myvolume:/etc busybox sh
+Docker area 
+given the volume can be mounted into multiple containers simultaneously
+
+>> docker container run -dt --name mynginx -v /root/index:/usr/share/nginx/html nginx
+filesystem
+the volume is created in filesystem /root/index directory
+
+>> docker container run -dt --name mynginx --mount type=bind,source=/root/index,target=/usr/share/nginx/html nginx
+filesystem
+
+. --rm will remove container and volume assocated the container
+
+- Device Mapper
+There are two modes for device mapper storage driver.
+. loop-lvm mode
+.. should only be used in testing environment
+
+. direct-lvm
+.. 
+
+- Logging Drivers in Docker
+There are a lot of loggings driver options available in Docker, some of these incluse:
+. json-file (default)
+. none
+. syslog
+. local
+. journald
+. splunk
+. awslogs
+
+>> docker container run -dt --name mynginx --log-driver none busybox ping google.com
+. docker logs command is not available for drivers different from json-file and journald
+
+
+https://docs.google.com/document/d/1KU7tmDR9VNEf-jlIQkr0QxBj4DcAAh6hPP9pMw3_W7g/edit?usp=sharing
+
+
+Tags
+
+
+https://github.com/DevOps-Academy-Org/dca-prep-guide
+Configure a registry
+ (don't work yet)
+
+184
+
+
+https://www.linkedin.com/posts/yujunliang_freebie-freebies-jenkins-activity-6731224901706940416-raEU/?v=1
+
+
+
+
+
+
+CL/CD = Continuous Learning/Continuous Development (@yujunliang)
+Terraform 179
